@@ -1,0 +1,73 @@
+version: '2.3'
+
+networks:
+  log_net:
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.host_binding_ipv4: 0.0.0.0
+      com.docker.network.driver.mtu: 1500
+    ipam:
+      config:
+        - subnet: 10.10.100.0/28
+          gateway: 10.10.100.1
+
+services:
+  central-log:
+    #image: centos:7
+    build:
+     context: ./server/.
+    # network: host
+    container_name: central-log
+    hostname: central-log
+    privileged: true
+    networks:
+      log_net:
+        ipv4_address: 10.10.100.2
+    volumes:
+     - ./hosts:/etc/hosts
+     - ./rsyslog-server.conf:/etc/rsyslog.conf
+     - ./rsyslog.d:/etc/rsyslog.d
+     - ./data:/data
+     - /tmp:/tmp
+    command: /sbin/init
+
+  client1:
+    #image: centos:7
+    build:
+     context: ./nginx/.
+    # network: host
+    container_name: client1
+    hostname: client1
+    privileged: true
+    networks:
+      log_net:
+        ipv4_address: 10.10.100.5
+    #restart: always
+    volumes:
+     - ./hosts:/etc/hosts
+     - ./rsyslog-client.conf:/etc/rsyslog.conf
+     - ./rsyslog.d-client:/etc/rsyslog.d
+     - ./data/public_html:/data/public_html
+     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    command: /sbin/init
+
+
+  client2:
+    #image: centos:7
+    build:
+     context: ./nginx/.
+    container_name: client2
+    hostname: client2
+    privileged: true
+    networks:
+      log_net:
+        ipv4_address: 10.10.100.6
+    #restart: always
+    volumes:
+     - ./hosts:/etc/hosts
+     - ./rsyslog-client.conf:/etc/rsyslog.conf
+     - ./rsyslog.d-client:/etc/rsyslog.d
+     - ./data/public_html:/data/public_html
+     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    command: /sbin/init
